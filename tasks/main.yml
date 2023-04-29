@@ -1,0 +1,27 @@
+- name: Checking to see if key is already present
+  ansible.builtin.stat:
+    path: /usr/share/keyrings/opera-keyring.asc
+  register: keyring
+
+- name: Download repo signing key
+  ansible.builtin.get_url:
+    checksum: sha256:4287a881f10200b70a1409bf552c85ea935b918b69757ecf57020109d869b00a
+    url: https://deb.opera.com/archive.key
+    dest: /usr/share/keyrings/opera-keyring.asc
+    mode: '644'
+  when: "ansible_os_family == 'Debian' and not keyring.stat.exists"
+
+- name: Add specified repository into sources list
+  ansible.builtin.apt_repository:
+    repo: deb [arch=i386,amd64 signed-by=/usr/share/keyrings/opera-keyring.asc] https://deb.opera.com/opera-stable/ stable non-free
+    filename: opera-stable
+  when: "ansible_os_family == 'Debian'"
+
+- name: Make sure we have the latest metadata for apt
+  ansible.builtin.apt:
+    update_cache: True
+  when: ansible_os_family == "Debian"
+
+- name: Install the package
+  ansible.builtin.package:
+    name: opera-stable
